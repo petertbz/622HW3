@@ -7,6 +7,7 @@ library(class)
 library(caret)
 library(MLmetrics)
 library(rpart)
+library(nnet)
 
 # import data
 data = read.csv('cleaned_data.csv', stringsAsFactors = FALSE)
@@ -67,10 +68,13 @@ comment_dtm_df = as.data.frame(as.matrix(comment_dtm))
 # Add label variable to the data frame
 comment_dtm_df$ID = data$ID
 comment_dtm_df$label = data$label
-
-features = subset(comment_dtm_df, select = -ID)
-
 # train and test split
+features = subset(comment_dtm_df, select = -ID)
+set.seed(123)
+trainIndex = createDataPartition(features$label, p = 0.8, list = FALSE)
+train = features[trainIndex,]
+test = features[-trainIndex,]
+
 # KNN method
 control = trainControl(method = "cv", number = 10,
                         savePredictions = "final", 
@@ -78,10 +82,11 @@ control = trainControl(method = "cv", number = 10,
                         summaryFunction = multiClassSummary)
 k_values = c(3,4,5,6,7,8,9)
 results = data.frame(K = integer(), Accuracy = numeric(),
-                      Precision = numeric(), Recall = numeric())             
+                      Precision = numeric(), Recall = numeric())
+confusion1 = list()
 for(k in k_values){
   set.seed(123)
-  knn_fit = train(label ~ ., data = features, method = "knn", trControl = control,
+  knn_fit = train(label ~ ., data = train, method = "knn", trControl = control,
                    preProcess = c("center", "scale"),
                    tuneGrid = expand.grid(k = k),
                    metric = "Accuracy")
@@ -91,46 +96,52 @@ for(k in k_values){
   recall = Recall(knn_fit$pred$pred, knn_fit$pred$obs, positive = "Favor")
   results = rbind(results, data.frame(K = k, Accuracy = accuracy,
                                        Precision = precision, Recall = recall))
+  
+  predictions = predict(knn_fit, test)
+  c = confusionMatrix(predictions, test$label)
+  confusion1[[as.character(k)]] = c
 }
 
-print(results)  
+print(results)
+print(confusion1)
 
-# decision tree method: This does not work
+# neural network method
 control2 = trainControl(method = "cv", number = 10,
                         savePredictions = "final", 
                         classProbs = TRUE, 
                         summaryFunction = multiClassSummary)
-maxdepth = seq(3, 15, by = 1)
-results2 = data.frame(Maxdepth = integer(), Accuracy = numeric(),
-                      Precision = numeric(), Recall = numeric())
-
-for (maxdepth in maxdepth) {
+results2 = data.frame()
+confusion2 = list()
+sizes = 1
+decays = c(0.1, 0.01, 0.001) 
+for (decays in decays) {
   set.seed(123)
-  tuneGrid = expand.grid(cp = 0.001,
-                         maxdepth = maxdepth)
-  dtree_fit = train(label ~ ., data = features, method = "rpart",
-                    trControl = control2, 
-                    tuneGrid = tuneGrid,
-                    metric = "Accuracy")
-  accuracy = dtree_fit$results$Accuracy
-  precision = Precision(dtree_fit$pred$pred, dtree_fit$pred$obs, positive = "Favor")
-  recall = Recall(dtree_fit$pred$pred, dtree_fit$pred$obs, positive = "Favor")
-  results2 = rbind(results2, data.frame(Maxdepth = maxdepth, Accuracy = accuracy,
-                                        Precision = precision, Recall = recall))
+  nnet_fit = train(label ~ ., data = train, method = "nnet",
+                   trControl = control2, 
+                   tuneGrid = expand.grid(size = 1, decay = decays),
+                   metric = "Accuracy")
+  results2 = rbind(results2, nnet_fit$results)
+  predictions = predict(nnet_fit, test)
+  c2 = confusionMatrix(predictions, test$label)
+  confusion2[[as.character(decays)]] = c2
 }
 
+print(results2)
+print(confusion2)
 
 ## Svm method
-control3 = trainControl(method = "cv", number = 10,
-                        savePredictions = "final", 
-                        classProbs = TRUE, 
-                        summaryFunction = multiClassSummary)
-tuneGrid = expand.grid(C = c(0.01, 0.1, 1, 10),
-                        sigma = c(0.01, 0.1, 1, 10))
-set.seed(123)
-svm_fit = train(label ~ ., data = features, method = "svmRadial",
-                 trControl = control3, tuneLength = 5,
-                 tuneGrid = tuneGrid, preProcess = c("center", "scale"))
-# View the performance metrics for all models tested during the cross-validation.
-performance_metrics = svm_fit$results
-print(performance_metrics)
+# control3 = trainControl(method = "cv", number = 10,
+#                         savePredictions = "final", 
+#                         classProbs = TRUE, 
+#                         summaryFunction = multiClassSummary)
+# tuneGrid = expand.grid(C = c(0.01, 0.1, 1, 10),
+#                         sigma = c(0.01, 0.1, 1, 10))
+# set.seed(123)
+# svm_fit = train(label ~ ., data = train, method = "svmRadial",
+#                  trControl = control3, tuneLength = 5,
+#                  tuneGrid = tuneGrid, preProcess = c("center", "scale"))
+# results3 = svm_fit$results
+# predictions = predict(svm_fit, test)
+# confusion3 = confusionMatrix(predictions, test$label)
+
+save(confusion1, confusion2, file = "confusion.RData")
