@@ -14,6 +14,7 @@ linestretch: 1
 geometry: margin = 1in
 fontsize: 12pt
 mainfont: Times New Roman
+urlcolor: blue
 ---
 
 ```{r setup, include=FALSE}
@@ -49,7 +50,7 @@ data$ID = as.character(data$ID)
 # Introduction
 
 In this project, we use the Reddit comments collected in Assignment 2 and apply machine learning (ML) techniques and Large Language Models (LLMs) to analyze the stance of Reddit
-posts. In th first part is conducted in R, we begin from the basic steps of text pre-processing, including removing punctuation, stop words and removing rarely used words. We then tokenize the text and create a document-term matrix. We use several different models to predict the stance of the comments, including K-Nearest Neighbors, Neural Network and XGBoost Model. We evaluate the performance of these models using accuracy, sensitivity and specificity. In the second part, we use the Large Language Model (LLM) to anaylze the stance of the Reddit comments. We use GreatLakes HPC cluster to run the LLM.
+posts. In th first part is conducted in R, we begin from the basic steps of text pre-processing, including removing punctuation, stop words and removing rarely used words. We then tokenize the text and create a document-term matrix. We use several different models to predict the stance of the comments, including K-Nearest Neighbors, Neural Network and XGBoost Model. We evaluate the performance of these models using accuracy, sensitivity and specificity. In the second part, we use the Large Language Model (LLM) to anaylze the stance of the Reddit comments. We use GreatLakes HPC cluster to run the LLM. All data and code are available in the [GitHub repository](https://github.com/petertbz/622HW3.git).
 
 # Machine Learning Models in R
 
